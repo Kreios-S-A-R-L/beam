@@ -15,7 +15,6 @@ import type { PostSummaryProps } from '@/components/post-summary'
 import { PostSummarySkeleton } from '@/components/post-summary-skeleton'
 import { TextField } from '@/components/text-field'
 import { browserEnv } from '@/env/browser'
-import { uploadImage } from '@/lib/cloudinary'
 import { InferQueryPathAndInput, trpc } from '@/lib/trpc'
 import type { NextPageWithAuthAndLayout } from '@/lib/types'
 import { useSession } from 'next-auth/react'
@@ -454,7 +453,12 @@ function UpdateAvatarDialog({
     },
   })
   const uploadImageMutation = useMutation(
-    (file: File) => {
+    async (file: File) => {
+      const { uploadImage } = await (browserEnv.NEXT_PUBLIC_STORAGE_PROVIDER ===
+      's3'
+        ? import('@/lib/s3')
+        : import('@/lib/cloudinary'))
+      const uploadedImage = await uploadImage(file)
       return uploadImage(file)
     },
     {

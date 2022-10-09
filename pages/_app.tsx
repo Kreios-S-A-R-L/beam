@@ -1,4 +1,4 @@
-import { transformer } from '@/lib/trpc'
+import { getBaseUrl, transformer } from '@/lib/trpc'
 import type { NextPageWithAuthAndLayout } from '@/lib/types'
 import { AppRouter } from '@/server/routers/_app'
 import { httpBatchLink } from '@trpc/client/links/httpBatchLink'
@@ -51,18 +51,6 @@ function Auth({ children }: { children: React.ReactNode }) {
   // Session is being fetched, or no user.
   // If no user, useEffect() will redirect.
   return null
-}
-
-function getBaseUrl() {
-  if (process.browser) {
-    return ''
-  }
-
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`
-  }
-
-  return `http://localhost:${process.env.PORT ?? 3000}`
 }
 
 export default withTRPC<AppRouter>({

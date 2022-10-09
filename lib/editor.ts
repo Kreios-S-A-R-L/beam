@@ -1,4 +1,4 @@
-import { uploadImage } from '@/lib/cloudinary'
+import { browserEnv } from '@/env/browser'
 import DOMPurify from 'isomorphic-dompurify'
 import { marked } from 'marked'
 import toast from 'react-hot-toast'
@@ -29,13 +29,17 @@ export function uploadImageCommandHandler(
     cursor.replaceLine(currentLineNumber.lineNumber, placeholder)
 
     try {
+      const { uploadImage } = await (browserEnv.NEXT_PUBLIC_STORAGE_PROVIDER ===
+      's3'
+        ? import('@/lib/s3')
+        : import('@/lib/cloudinary'))
       const uploadedImage = await uploadImage(file)
 
       replacePlaceholder(
         cursor,
         placeholder,
         `<img width="${
-          uploadedImage.dpi >= 144
+          uploadedImage.dpi && uploadedImage.dpi >= 144
             ? Math.round(uploadedImage.width / 2)
             : uploadedImage.width
         }" alt="${uploadedImage.originalFilename}" src="${uploadedImage.url}">`
