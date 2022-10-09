@@ -1,8 +1,7 @@
 import { serverEnv } from '@/env/server'
-import { authOptions } from '@/lib/auth'
+import { getServerAuthSession } from '@/lib/auth'
 import { v2 as cloudinary } from 'cloudinary'
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { unstable_getServerSession } from 'next-auth/next'
 
 type Data = {
   timestamp: number
@@ -37,7 +36,7 @@ export default async function handler(
     return res.status(405).json({ message: `Method ${req.method} Not Allowed` })
   }
 
-  const session = await unstable_getServerSession(req, res, authOptions)
+  const session = await getServerAuthSession({ req, res })
 
   if (!session) {
     return res.status(401).json({ message: 'Unauthorized' })
