@@ -1,6 +1,5 @@
 import { GithubLogo, HeartFilledIcon } from '@/components/icons'
 import * as React from 'react'
-import packageJson from '../package.json'
 
 export function Footer() {
   return (
@@ -27,7 +26,7 @@ export function Footer() {
         className="inline-flex items-center gap-2 text-sm transition-colors text-secondary hover:text-primary"
       >
         <GithubLogo className="w-4 h-4" />
-        <span>Version {packageJson.version}</span>
+        <span>View on GitHub</span>
       </a>
     </footer>
   )
