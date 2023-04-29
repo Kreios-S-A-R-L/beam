@@ -7,6 +7,8 @@ import { unstable_getServerSession } from 'next-auth/next'
 import GoogleProvider, { GoogleProfile } from 'next-auth/providers/google'
 import { GetServerSidePropsContext } from 'next/types'
 
+const emailRegex = new RegExp(serverEnv.AUTH_EMAIL_REGEX)
+
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
@@ -21,11 +23,7 @@ export const authOptions: NextAuthOptions = {
         const profile = rest.profile as GoogleProfile
 
         const { email_verified, email } = profile
-        return Boolean(
-          email_verified &&
-            email.endsWith('@kreios.lu') &&
-            !email.includes('external')
-        )
+        return email_verified && emailRegex.test(email)
       }
       return false
     },
