@@ -5,6 +5,7 @@ import { httpBatchLink } from '@trpc/client/links/httpBatchLink'
 import { loggerLink } from '@trpc/client/links/loggerLink'
 import { withTRPC } from '@trpc/next'
 import { TRPCError } from '@trpc/server'
+import { Session } from 'next-auth'
 import { SessionProvider, signIn, useSession } from 'next-auth/react'
 import { ThemeProvider } from 'next-themes'
 import type { AppProps } from 'next/app'
@@ -12,7 +13,7 @@ import * as React from 'react'
 import { Toaster } from 'react-hot-toast'
 import '../styles/globals.css'
 
-type AppPropsWithAuthAndLayout = AppProps & {
+type AppPropsWithAuthAndLayout = AppProps<{ session: Session }> & {
   Component: NextPageWithAuthAndLayout
 }
 
