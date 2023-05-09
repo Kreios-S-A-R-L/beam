@@ -1,4 +1,4 @@
-import { trpcClient } from './trpc'
+import { api } from '@/server/utils/api'
 
 const loadImage = (url: string) =>
   new Promise<{ width: number; height: number }>((resolve, reject) => {
@@ -22,8 +22,11 @@ const loadImage = (url: string) =>
     img.src = url
   })
 
-export async function uploadImage(file: File) {
-  const { key, uploadUrl } = await trpcClient.query('image.upload', {
+export async function uploadImage(
+  file: File,
+  utils: ReturnType<(typeof api)['useContext']>
+) {
+  const { key, uploadUrl } = await utils.image.upload.fetch({
     fileType: file.type,
   })
 

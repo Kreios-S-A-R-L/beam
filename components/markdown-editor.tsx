@@ -7,12 +7,12 @@ import {
   uploadImageCommandHandler,
   markdownToHtml,
 } from '@/lib/editor'
-import { trpc } from '@/lib/trpc'
+import { api } from '@/server/utils/api'
 import { Switch } from '@headlessui/react'
 import { matchSorter } from 'match-sorter'
 import * as React from 'react'
 import { useDetectClickOutside } from 'react-detect-click-outside'
-import { useQuery } from 'react-query'
+import { useQuery } from '@tanstack/react-query'
 import TextareaAutosize, {
   TextareaAutosizeProps,
 } from 'react-textarea-autosize'
@@ -151,6 +151,8 @@ export function MarkdownEditor({
     suggestionDispatch({ type: 'close' })
   }
 
+  const utils = api.useContext()
+
   return (
     <div>
       {label && <label className="block mb-2 font-semibold">{label}</label>}
@@ -271,7 +273,11 @@ export function MarkdownEditor({
 
                   event.preventDefault()
 
-                  uploadImageCommandHandler(event.currentTarget, imageFiles)
+                  uploadImageCommandHandler(
+                    event.currentTarget,
+                    imageFiles,
+                    utils
+                  )
                 }
               }}
               onDrop={(event) => {
@@ -292,7 +298,11 @@ export function MarkdownEditor({
 
                   event.preventDefault()
 
-                  uploadImageCommandHandler(event.currentTarget, imageFiles)
+                  uploadImageCommandHandler(
+                    event.currentTarget,
+                    imageFiles,
+                    utils
+                  )
                 }
               }}
               className="block w-full rounded shadow-sm bg-secondary border-secondary focus-ring"
@@ -357,7 +367,7 @@ function Suggestion({
   const isEmojiType = state.type === 'emoji'
 
   const emojiListQuery = useQuery(
-    'emojiList',
+    ['emojiList'],
     async () => {
       const gemoji = (await import('gemoji')).gemoji
       return gemoji
@@ -368,7 +378,7 @@ function Suggestion({
     }
   )
 
-  const mentionListQuery = trpc.useQuery(['user.mentionList'], {
+  const mentionListQuery = api.user.mentionList.useQuery(undefined, {
     enabled: state.isOpen && isMentionType,
     staleTime: 5 * 60 * 1000,
   })
