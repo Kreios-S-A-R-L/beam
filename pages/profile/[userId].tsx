@@ -15,7 +15,6 @@ import type { PostSummaryProps } from '@/components/post-summary'
 import { PostSummarySkeleton } from '@/components/post-summary-skeleton'
 import { TextField } from '@/components/text-field'
 import { browserEnv } from '@/env/browser'
-import { InferQueryPathAndInput, trpc } from '@/lib/trpc'
 import type { NextPageWithAuthAndLayout } from '@/lib/types'
 import { useSession } from 'next-auth/react'
 import dynamic from 'next/dynamic'
@@ -24,7 +23,8 @@ import { useRouter } from 'next/router'
 import * as React from 'react'
 import { SubmitHandler, useForm } from 'react-hook-form'
 import toast from 'react-hot-toast'
-import { useMutation } from 'react-query'
+import { useMutation } from '@tanstack/react-query'
+import { RouterInputs, api } from '@/server/utils/api'
 
 const PostSummary = dynamic<PostSummaryProps>(
   () => import('@/components/post-summary').then((mod) => mod.PostSummary),
@@ -32,17 +32,6 @@ const PostSummary = dynamic<PostSummaryProps>(
 )
 
 const POSTS_PER_PAGE = 20
-
-function getProfileQueryPathAndInput(
-  id: string
-): InferQueryPathAndInput<'user.profile'> {
-  return [
-    'user.profile',
-    {
-      id,
-    },
-  ]
-}
 
 const ProfilePage: NextPageWithAuthAndLayout = () => {
   return (
@@ -62,10 +51,10 @@ ProfilePage.getLayout = function getLayout(page: React.ReactElement) {
 function ProfileInfo() {
   const { data: session } = useSession()
   const router = useRouter()
-  const profileQueryPathAndInput = getProfileQueryPathAndInput(
-    String(router.query.userId)
-  )
-  const profileQuery = trpc.useQuery(profileQueryPathAndInput)
+
+  const profileQuery = api.user.profile.useQuery({
+    id: String(router.query.userId),
+  })
 
   const [isEditProfileDialogOpen, setIsEditProfileDialogOpen] =
     React.useState(false)
@@ -184,23 +173,25 @@ function ProfileFeed() {
   const { data: session } = useSession()
   const router = useRouter()
   const currentPageNumber = router.query.page ? Number(router.query.page) : 1
-  const utils = trpc.useContext()
-  const profileFeedQueryPathAndInput: InferQueryPathAndInput<'post.feed'> = [
-    'post.feed',
-    {
-      ...getQueryPaginationInput(POSTS_PER_PAGE, currentPageNumber),
-      authorId: String(router.query.userId),
-    },
-  ]
-  const profileFeedQuery = trpc.useQuery(profileFeedQueryPathAndInput)
-  const likeMutation = trpc.useMutation(['post.like'], {
-    onMutate: async (likedPostId) => {
-      await utils.cancelQuery(profileFeedQueryPathAndInput)
+  const utils = api.useContext()
 
-      const previousQuery = utils.getQueryData(profileFeedQueryPathAndInput)
+  const profileFeedQueryPathAndInput: RouterInputs['post']['feed'] = {
+    ...getQueryPaginationInput(POSTS_PER_PAGE, currentPageNumber),
+    authorId: String(router.query.userId),
+  }
+
+  const profileFeedQuery = api.post.feed.useQuery(profileFeedQueryPathAndInput)
+
+  const likeMutation = api.post.like.useMutation({
+    onMutate: async (likedPostId) => {
+      await utils.post.feed.cancel(profileFeedQueryPathAndInput)
+
+      const previousQuery = utils.post.feed.getData(
+        profileFeedQueryPathAndInput
+      )
 
       if (previousQuery) {
-        utils.setQueryData(profileFeedQueryPathAndInput, {
+        utils.post.feed.setData(profileFeedQueryPathAndInput, {
           ...previousQuery,
           posts: previousQuery.posts.map((post) =>
             post.id === likedPostId
@@ -222,18 +213,23 @@ function ProfileFeed() {
     },
     onError: (err, id, context: any) => {
       if (context?.previousQuery) {
-        utils.setQueryData(profileFeedQueryPathAndInput, context.previousQuery)
+        utils.post.feed.setData(
+          profileFeedQueryPathAndInput,
+          context.previousQuery
+        )
       }
     },
   })
-  const unlikeMutation = trpc.useMutation(['post.unlike'], {
+  const unlikeMutation = api.post.unlike.useMutation({
     onMutate: async (unlikedPostId) => {
-      await utils.cancelQuery(profileFeedQueryPathAndInput)
+      await utils.post.feed.cancel(profileFeedQueryPathAndInput)
 
-      const previousQuery = utils.getQueryData(profileFeedQueryPathAndInput)
+      const previousQuery = utils.post.feed.getData(
+        profileFeedQueryPathAndInput
+      )
 
       if (previousQuery) {
-        utils.setQueryData(profileFeedQueryPathAndInput, {
+        utils.post.feed.setData(profileFeedQueryPathAndInput, {
           ...previousQuery,
           posts: previousQuery.posts.map((post) =>
             post.id === unlikedPostId
@@ -252,7 +248,10 @@ function ProfileFeed() {
     },
     onError: (err, id, context: any) => {
       if (context?.previousQuery) {
-        utils.setQueryData(profileFeedQueryPathAndInput, context.previousQuery)
+        utils.post.feed.setData(
+          profileFeedQueryPathAndInput,
+          context.previousQuery
+        )
       }
     },
   })
@@ -367,13 +366,11 @@ function EditProfileDialog({
     },
   })
   const router = useRouter()
-  const utils = trpc.useContext()
-  const editUserMutation = trpc.useMutation('user.edit', {
+  const utils = api.useContext()
+  const editUserMutation = api.user.edit.useMutation({
     onSuccess: () => {
       window.location.reload()
-      return utils.invalidateQueries(
-        getProfileQueryPathAndInput(String(router.query.userId))
-      )
+      return utils.user.profile.invalidate({ id: String(router.query.userId) })
     },
     onError: (error) => {
       toast.error(`Something went wrong: ${error.message}`)
@@ -444,7 +441,7 @@ function UpdateAvatarDialog({
 }) {
   const fileInputRef = React.useRef<HTMLInputElement>(null)
   const [uploadedImage, setUploadedImage] = React.useState(user.image)
-  const updateUserAvatarMutation = trpc.useMutation('user.update-avatar', {
+  const updateUserAvatarMutation = api.user.updateAvatar.useMutation({
     onSuccess: () => {
       window.location.reload()
     },
@@ -452,14 +449,14 @@ function UpdateAvatarDialog({
       toast.error(`Something went wrong: ${error.message}`)
     },
   })
+  const utils = api.useContext()
   const uploadImageMutation = useMutation(
     async (file: File) => {
       const { uploadImage } = await (browserEnv.NEXT_PUBLIC_STORAGE_PROVIDER ===
       's3'
         ? import('@/lib/s3')
         : import('@/lib/cloudinary'))
-      const uploadedImage = await uploadImage(file)
-      return uploadImage(file)
+      return uploadImage(file, utils)
     },
     {
       onError: (error: any) => {

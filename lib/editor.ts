@@ -1,4 +1,5 @@
 import { browserEnv } from '@/env/browser'
+import { api } from '@/server/utils/api'
 import DOMPurify from 'isomorphic-dompurify'
 import { marked } from 'marked'
 import toast from 'react-hot-toast'
@@ -18,7 +19,8 @@ function replacePlaceholder(
 
 export function uploadImageCommandHandler(
   textareaEl: HTMLTextAreaElement,
-  files: File[]
+  files: File[],
+  utils: ReturnType<(typeof api)['useContext']>
 ) {
   const cursor = new Cursor(textareaEl)
   const currentLineNumber = cursor.position.line
@@ -33,7 +35,7 @@ export function uploadImageCommandHandler(
       's3'
         ? import('@/lib/s3')
         : import('@/lib/cloudinary'))
-      const uploadedImage = await uploadImage(file)
+      const uploadedImage = await uploadImage(file, utils)
 
       replacePlaceholder(
         cursor,

@@ -1,38 +1,41 @@
-import { z } from 'zod'
-import { createProtectedRouter } from '../create-protected-router'
-import S3 from 'aws-sdk/clients/s3'
-import { randomUUID } from 'crypto'
 import { serverEnv } from '@/env/server'
-
-const s3 = new S3({
-  apiVersion: '2006-03-01',
-  accessKeyId: serverEnv.AWS_ACCESS_KEY_ID,
-  secretAccessKey: serverEnv.AWS_SECRET_ACCESS_KEY,
+import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
+import { randomUUID } from 'crypto'
+import { z } from 'zod'
+import { protectedProcedure, createTRPCRouter } from '@/server/api/trpc'
+// ...
+const client = new S3Client({
+  credentials: {
+    accessKeyId: serverEnv.AWS_ACCESS_KEY_ID,
+    secretAccessKey: serverEnv.AWS_SECRET_ACCESS_KEY,
+  },
   region: serverEnv.AWS_REGION,
-  signatureVersion: 'v4',
 })
 
-export const imageRouter = createProtectedRouter().query('upload', {
-  input: z.object({
-    fileType: z.string(),
-  }),
-  async resolve({ ctx, input: { fileType } }) {
-    const ex = fileType.split('/')[1]
+export const imageRouter = createTRPCRouter({
+  upload: protectedProcedure
+    .input(
+      z.object({
+        fileType: z.string(),
+      })
+    )
+    .query(async ({ ctx, input: { fileType } }) => {
+      const ex = fileType.split('/')[1]
 
-    const Key = `${randomUUID()}.${ex}`
+      const Key = `${randomUUID()}.${ex}`
 
-    const s3Params = {
-      Bucket: serverEnv.AWS_BUCKET,
-      Key,
-      Expires: 60,
-      ContentType: `image/${ex}`,
-    }
+      const command = new PutObjectCommand({
+        Bucket: serverEnv.AWS_BUCKET,
+        Key,
+        ContentType: fileType,
+      })
 
-    const uploadUrl = await s3.getSignedUrl('putObject', s3Params)
+      const url = await getSignedUrl(client, command, { expiresIn: 60 })
 
-    return {
-      uploadUrl,
-      key: Key,
-    }
-  },
+      return {
+        uploadUrl: url,
+        key: Key,
+      }
+    }),
 })

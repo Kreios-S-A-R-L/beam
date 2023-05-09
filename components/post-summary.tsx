@@ -9,16 +9,16 @@ import {
 } from '@/components/icons'
 import { MAX_LIKED_BY_SHOWN } from '@/components/like-button'
 import { classNames } from '@/lib/classnames'
-import { InferQueryOutput } from '@/lib/trpc'
 import * as Tooltip from '@radix-ui/react-tooltip'
 import formatDistanceToNow from 'date-fns/formatDistanceToNow'
 import { useSession } from 'next-auth/react'
 import { summarize } from '@/lib/text'
 import Link from 'next/link'
 import * as React from 'react'
+import { RouterOutputs } from '@/server/utils/api'
 
 export type PostSummaryProps = {
-  post: InferQueryOutput<'post.feed'>['posts'][number]
+  post: RouterOutputs['post']['feed']['posts'][number]
   hideAuthor?: boolean
   onLike: () => void
   onUnlike: () => void
@@ -51,11 +51,9 @@ export function PostSummary({
       )}
       <div className={classNames(post.hidden ? 'opacity-50' : '')}>
         <Link href={`/post/${post.id}`}>
-          <a>
-            <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
-              {post.title}
-            </h2>
-          </a>
+          <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
+            {post.title}
+          </h2>
         </Link>
 
         <div className={classNames(hideAuthor ? 'mt-2' : 'mt-6')}>
@@ -75,10 +73,12 @@ export function PostSummary({
 
         <div className="flex items-center gap-4 mt-4 clear-both">
           {hasMore && (
-            <Link href={`/post/${post.id}`}>
-              <a className="inline-flex items-center font-medium transition-colors text-blue">
-                Continue reading <ChevronRightIcon className="w-4 h-4 ml-1" />
-              </a>
+            <Link
+              href={`/post/${post.id}`}
+              className="inline-flex items-center font-medium transition-colors text-blue"
+            >
+              Continue reading
+              <ChevronRightIcon className="w-4 h-4 ml-1" />
             </Link>
           )}
           <div className="ml-auto flex gap-6">
