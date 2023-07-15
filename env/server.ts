@@ -10,7 +10,7 @@ import { browserEnv } from './browser'
 
 if (process.browser) {
   throw new Error(
-    'This should only be included on the client (but the env vars wont be exposed)'
+    'This should only be included on the client (but the env vars wont be exposed)',
   )
 }
 
@@ -58,7 +58,12 @@ const s3Parser = makeValidator<string>((input) => {
 })
 
 const slackParser = makeValidator<string>((input) => {
-  if (process.env.ENABLE_SLACK_POSTING && input === '') {
+  if (
+    bool({ default: false })._parse(
+      process.env.ENABLE_SLACK_POSTING as string,
+    ) &&
+    input === ''
+  ) {
     throw invalidEnvError('slack config', input)
   }
   return input
@@ -119,6 +124,6 @@ export const serverEnv = {
       ENABLE_SLACK_POSTING: bool({ default: false }),
       SLACK_WEBHOOK_URL: slackParser({ allowEmpty: true, default: '' }),
     },
-    process.env.IS_BUILDING ? { reporter: () => {} } : {}
+    process.env.IS_BUILDING ? { reporter: () => {} } : {},
   ),
 }
